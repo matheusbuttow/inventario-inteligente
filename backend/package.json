@@ -4,8 +4,8 @@
   "description": "Sistema web para registrar e rastrear o empréstimo de componentes eletrônicos dos laboratórios do C3/FURG. O aluno escaneia o QR Code da caixa do componente pelo celular e registra o empréstimo ou a devolução **em menos de 5 segundos**.",
   "main": "index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
   },
   "repository": {
     "type": "git",

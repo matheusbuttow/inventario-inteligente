@@ -1,0 +1,30 @@
+{
+  "name": "inventario-inteligente",
+  "version": "1.0.0",
+  "description": "Sistema web para registrar e rastrear o empréstimo de componentes eletrônicos dos laboratórios do C3/FURG. O aluno escaneia o QR Code da caixa do componente pelo celular e registra o empréstimo ou a devolução **em menos de 5 segundos**.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matheusbuttow/inventario-inteligente.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/matheusbuttow/inventario-inteligente/issues"
+  },
+  "homepage": "https://github.com/matheusbuttow/inventario-inteligente#readme",
+  "dependencies": {
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

@@ -33,3 +33,5 @@ pgdata/
 docs/etiquetas-qr/*.png
 docs/etiquetas-qr/*.pdf
 !docs/etiquetas-qr/.gitkeep
+node_modules/
+.env

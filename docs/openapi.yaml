@@ -1,0 +1,749 @@
+openapi: 3.0.3
+info:
+  title: Inventário Inteligente de Laboratório
+  description: |
+    API REST para registrar e rastrear empréstimos de componentes eletrônicos
+    dos laboratórios do C3/FURG.
+
+    Todas as rotas, exceto `/health`, `/auth/registrar` e `/auth/login`,
+    exigem o cabeçalho `Authorization: Bearer <token>`.
+  version: 0.1.0
+  contact:
+    name: Matheus Pimenta Silveira
+    email: matheus.pimenta@furg.br
+  license:
+    name: Uso acadêmico — FURG / C3 / PDS2
+
+servers:
+  - url: http://localhost:3000
+    description: Ambiente local (Docker Compose)
+
+tags:
+  - name: Saúde
+    description: Verificação da API
+  - name: Autenticação
+    description: Cadastro, login e sessão
+  - name: Componentes
+    description: Catálogo de componentes
+  - name: Localizações
+    description: Armários, gavetas e laboratórios
+  - name: Empréstimos
+    description: Retirada, devolução, histórico e atrasos
+
+paths:
+  /health:
+    get:
+      tags: [Saúde]
+      summary: Verifica se a API está no ar
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: API operacional
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /auth/registrar:
+    post:
+      tags: [Autenticação]
+      summary: Cria um novo usuário
+      operationId: postAuthRegistrar
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrarRequest"
+            example:
+              nome: Maria Silva
+              matricula: "202312345"
+              email: maria@furg.br
+              senha: senhaSegura123
+              perfil: aluno
+      responses:
+        "201":
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsuarioPublico"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "409":
+          description: E-mail ou matrícula já cadastrados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+
+  /auth/login:
+    post:
+      tags: [Autenticação]
+      summary: Autentica e retorna o token JWT
+      operationId: postAuthLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: maria@furg.br
+              senha: senhaSegura123
+      responses:
+        "200":
+          description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+
+  /auth/eu:
+    get:
+      tags: [Autenticação]
+      summary: Dados do usuário logado
+      operationId: getAuthEu
+      responses:
+        "200":
+          description: Usuário autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsuarioPublico"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+
+  /componentes:
+    get:
+      tags: [Componentes]
+      summary: Lista componentes
+      operationId: getComponentes
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/StatusComponente"
+          description: Filtra por status
+        - name: busca
+          in: query
+          schema:
+            type: string
+          description: Busca por nome ou categoria
+      responses:
+        "200":
+          description: Lista de componentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Componente"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+    post:
+      tags: [Componentes]
+      summary: Cria componente (admin)
+      operationId: postComponentes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComponenteCreate"
+      responses:
+        "201":
+          description: Componente criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Componente"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+
+  /componentes/{id}:
+    get:
+      tags: [Componentes]
+      summary: Detalhe do componente (com quem está, se emprestado)
+      operationId: getComponenteById
+      parameters:
+        - $ref: "#/components/parameters/ComponenteId"
+      responses:
+        "200":
+          description: Detalhe do componente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComponenteDetalhe"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "404":
+          description: Componente não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+    put:
+      tags: [Componentes]
+      summary: Edita componente (admin)
+      operationId: putComponente
+      parameters:
+        - $ref: "#/components/parameters/ComponenteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComponenteUpdate"
+      responses:
+        "200":
+          description: Componente atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Componente"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+        "404":
+          description: Componente não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+    delete:
+      tags: [Componentes]
+      summary: Remove componente (admin)
+      operationId: deleteComponente
+      parameters:
+        - $ref: "#/components/parameters/ComponenteId"
+      responses:
+        "204":
+          description: Removido
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+        "404":
+          description: Componente não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+
+  /componentes/qr/{codigo}:
+    get:
+      tags: [Componentes]
+      summary: Busca componente pelo código do QR (usado pelo scanner)
+      operationId: getComponenteByQr
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+          description: Valor gravado no QR Code da etiqueta
+      responses:
+        "200":
+          description: Componente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComponenteDetalhe"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "404":
+          $ref: "#/components/responses/QrInvalido"
+
+  /localizacoes:
+    get:
+      tags: [Localizações]
+      summary: Lista localizações
+      operationId: getLocalizacoes
+      responses:
+        "200":
+          description: Lista de localizações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Localizacao"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+    post:
+      tags: [Localizações]
+      summary: Cria localização (admin)
+      operationId: postLocalizacoes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalizacaoCreate"
+      responses:
+        "201":
+          description: Localização criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Localizacao"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+
+  /emprestimos:
+    post:
+      tags: [Empréstimos]
+      summary: Registra retirada de um componente
+      operationId: postEmprestimos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmprestimoCreate"
+            example:
+              componente_id: 12
+      responses:
+        "201":
+          description: Empréstimo registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Emprestimo"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "409":
+          $ref: "#/components/responses/ComponenteJaEmprestado"
+
+  /emprestimos/{id}/devolver:
+    patch:
+      tags: [Empréstimos]
+      summary: Registra devolução
+      description: |
+        Só quem pegou o componente (ou um admin) pode registrar a devolução.
+      operationId: patchEmprestimoDevolver
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Devolução registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Emprestimo"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+        "404":
+          description: Empréstimo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+        "409":
+          $ref: "#/components/responses/JaDevolvido"
+
+  /emprestimos/meus:
+    get:
+      tags: [Empréstimos]
+      summary: Empréstimos abertos do usuário logado
+      operationId: getEmprestimosMeus
+      responses:
+        "200":
+          description: Lista de empréstimos abertos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Emprestimo"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+
+  /emprestimos/historico:
+    get:
+      tags: [Empréstimos]
+      summary: Histórico de empréstimos
+      operationId: getEmprestimosHistorico
+      parameters:
+        - name: componente_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: usuario_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Histórico
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Emprestimo"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+
+  /emprestimos/atrasados:
+    get:
+      tags: [Empréstimos]
+      summary: Empréstimos abertos há mais de DIAS_ATRASO dias
+      operationId: getEmprestimosAtrasados
+      responses:
+        "200":
+          description: Lista de atrasados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Emprestimo"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ComponenteId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+  schemas:
+    Perfil:
+      type: string
+      enum: [aluno, admin]
+
+    StatusComponente:
+      type: string
+      enum: [disponivel, emprestado, manutencao]
+
+    Erro:
+      type: object
+      required: [erro, mensagem]
+      properties:
+        erro:
+          type: string
+          description: Código de erro estável para o front-end
+          example: COMPONENTE_JA_EMPRESTADO
+        mensagem:
+          type: string
+          description: Mensagem legível para o usuário
+          example: Este componente está com Fulano desde 14/10.
+
+    RegistrarRequest:
+      type: object
+      required: [nome, matricula, email, senha]
+      properties:
+        nome:
+          type: string
+          maxLength: 120
+        matricula:
+          type: string
+          maxLength: 20
+        email:
+          type: string
+          format: email
+          maxLength: 120
+        senha:
+          type: string
+          minLength: 6
+          format: password
+        perfil:
+          $ref: "#/components/schemas/Perfil"
+          default: aluno
+
+    LoginRequest:
+      type: object
+      required: [email, senha]
+      properties:
+        email:
+          type: string
+          format: email
+        senha:
+          type: string
+          format: password
+
+    LoginResponse:
+      type: object
+      required: [token, usuario]
+      properties:
+        token:
+          type: string
+          description: JWT de longa duração (JWT_EXPIRES_IN)
+        usuario:
+          $ref: "#/components/schemas/UsuarioPublico"
+
+    UsuarioPublico:
+      type: object
+      required: [id, nome, matricula, email, perfil]
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        matricula:
+          type: string
+        email:
+          type: string
+          format: email
+        perfil:
+          $ref: "#/components/schemas/Perfil"
+        criado_em:
+          type: string
+          format: date-time
+
+    Localizacao:
+      type: object
+      required: [id, nome, laboratorio]
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+          maxLength: 80
+          example: Armário 2 — Gaveta B
+        laboratorio:
+          type: string
+          maxLength: 80
+          example: Lab. de Sistemas Embarcados
+
+    LocalizacaoCreate:
+      type: object
+      required: [nome, laboratorio]
+      properties:
+        nome:
+          type: string
+          maxLength: 80
+        laboratorio:
+          type: string
+          maxLength: 80
+
+    Componente:
+      type: object
+      required: [id, nome, categoria, codigo_qr, localizacao_id, status]
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+          maxLength: 120
+          example: Sensor Ultrassônico HC-SR04
+        categoria:
+          type: string
+          maxLength: 60
+          example: sensor
+        codigo_qr:
+          type: string
+          maxLength: 64
+        localizacao_id:
+          type: integer
+        status:
+          $ref: "#/components/schemas/StatusComponente"
+        criado_em:
+          type: string
+          format: date-time
+        localizacao:
+          $ref: "#/components/schemas/Localizacao"
+
+    ComponenteDetalhe:
+      allOf:
+        - $ref: "#/components/schemas/Componente"
+        - type: object
+          properties:
+            emprestimo_aberto:
+              oneOf:
+                - $ref: "#/components/schemas/EmprestimoResumo"
+                - type: "null"
+              description: Preenchido quando status é emprestado
+
+    ComponenteCreate:
+      type: object
+      required: [nome, categoria, codigo_qr, localizacao_id]
+      properties:
+        nome:
+          type: string
+          maxLength: 120
+        categoria:
+          type: string
+          maxLength: 60
+        codigo_qr:
+          type: string
+          maxLength: 64
+        localizacao_id:
+          type: integer
+        status:
+          $ref: "#/components/schemas/StatusComponente"
+          default: disponivel
+
+    ComponenteUpdate:
+      type: object
+      properties:
+        nome:
+          type: string
+          maxLength: 120
+        categoria:
+          type: string
+          maxLength: 60
+        codigo_qr:
+          type: string
+          maxLength: 64
+        localizacao_id:
+          type: integer
+        status:
+          $ref: "#/components/schemas/StatusComponente"
+
+    EmprestimoCreate:
+      type: object
+      required: [componente_id]
+      properties:
+        componente_id:
+          type: integer
+          minimum: 1
+
+    EmprestimoResumo:
+      type: object
+      properties:
+        id:
+          type: integer
+        usuario_id:
+          type: integer
+        usuario_nome:
+          type: string
+        retirado_em:
+          type: string
+          format: date-time
+
+    Emprestimo:
+      type: object
+      required: [id, usuario_id, componente_id, retirado_em]
+      properties:
+        id:
+          type: integer
+        usuario_id:
+          type: integer
+        componente_id:
+          type: integer
+        retirado_em:
+          type: string
+          format: date-time
+        devolvido_em:
+          type: string
+          format: date-time
+          nullable: true
+          description: null enquanto o empréstimo estiver aberto
+        usuario:
+          $ref: "#/components/schemas/UsuarioPublico"
+        componente:
+          $ref: "#/components/schemas/Componente"
+
+  responses:
+    DadosInvalidos:
+      description: Corpo da requisição incompleto ou inválido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: DADOS_INVALIDOS
+            mensagem: Campos obrigatórios ausentes ou inválidos.
+
+    NaoAutenticado:
+      description: Token ausente ou inválido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: NAO_AUTENTICADO
+            mensagem: Faça login para continuar.
+
+    SemPermissao:
+      description: Rota de admin acessada por aluno (ou devolução por outro usuário)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: SEM_PERMISSAO
+            mensagem: Você não tem permissão para esta ação.
+
+    QrInvalido:
+      description: Código QR não corresponde a nenhum componente
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: QR_INVALIDO
+            mensagem: Nenhum componente encontrado para este QR Code.
+
+    ComponenteJaEmprestado:
+      description: Tentativa de pegar componente já emprestado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: COMPONENTE_JA_EMPRESTADO
+            mensagem: Este componente está com Fulano desde 14/10.
+
+    JaDevolvido:
+      description: Tentativa de devolver empréstimo já fechado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: JA_DEVOLVIDO
+            mensagem: Este empréstimo já foi devolvido.
+
+security:
+  - bearerAuth: []

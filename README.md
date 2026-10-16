@@ -122,20 +122,33 @@ cd inventario-inteligente
 # 2. Criar o arquivo de ambiente
 cp .env.example .env
 
-# 3. Subir banco, back-end e front-end
+# 3. Subir os serviços
+docker compose up --build
+```
+
+**Semana 1 (até o back-end e o front-end entrarem no Compose):** sobe só o Postgres.
+
+```bash
+docker compose up -d db
+```
+
+Quando Pietro e Lucas entregarem Dockerfile/`package.json`, descomente os serviços `backend` e `frontend` em `docker-compose.yml` e rode:
+
+```bash
 docker compose up --build
 
-# 4. Em outro terminal, rodar migrations e seeds
+# Em outro terminal, migrations e seeds (Thiago)
 docker compose exec backend npm run migrate
 docker compose exec backend npm run seed
 ```
 
-| Serviço | Endereço |
-| --- | --- |
-| Front-end | http://localhost:5173 |
-| API | http://localhost:3000 |
-| Documentação da API | http://localhost:3000/docs |
-| PostgreSQL | localhost:5432 |
+| Serviço | Endereço | Disponível |
+| --- | --- | --- |
+| PostgreSQL | localhost:5432 | Semana 1 (já) |
+| API | http://localhost:3000 | Quando o back-end entrar no Compose |
+| Documentação da API (Swagger) | http://localhost:3000/docs | Quando o back-end servir o OpenAPI |
+| Front-end | http://localhost:5173 | Quando o front-end entrar no Compose |
+| Contrato OpenAPI (fonte) | [`docs/openapi.yaml`](docs/openapi.yaml) | Semana 1 (já) |
 
 **Usuários de teste (criados pelo seed):** veja o arquivo `database/seeds/` — não coloque senhas reais no repositório.
 
@@ -157,7 +170,8 @@ docker compose exec backend npm test
 | Variável | Exemplo | Descrição |
 | --- | --- | --- |
 | `POSTGRES_HOST` | `db` | Host do banco (nome do serviço no Compose) |
-| `POSTGRES_PORT` | `5432` | Porta do banco |
+| `POSTGRES_PORT` | `5432` | Porta do banco *dentro* da rede Docker |
+| `POSTGRES_HOST_PORT` | `5432` | Porta publicada no host (use `5433` se a 5432 já estiver ocupada) |
 | `POSTGRES_DB` | `inventario` | Nome do banco |
 | `POSTGRES_USER` | `inventario` | Usuário do banco |
 | `POSTGRES_PASSWORD` | `troque-aqui` | Senha do banco |
@@ -166,6 +180,8 @@ docker compose exec backend npm test
 | `API_PORT` | `3000` | Porta da API |
 | `VITE_API_URL` | `http://localhost:3000` | Endereço da API usado pelo front-end |
 | `DIAS_ATRASO` | `7` | Dias até um empréstimo ser considerado atrasado |
+
+> Se a porta 5432 do host já estiver em uso, defina `POSTGRES_HOST_PORT=5433` no `.env`. Dentro da rede Docker o banco continua em `db:5432`.
 
 ## 8. Modelo de dados
 

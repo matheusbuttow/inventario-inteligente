@@ -9,11 +9,10 @@ const checkHealth = async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    console.error('Falha ao verificar conexão com o banco de dados:', error);
     res.status(500).json({
-      status: 'ERROR',
-      database: 'Desconectado',
-      error: error.message,
-      timestamp: new Date().toISOString(),
+      erro: 'ERRO_INTERNO',
+      mensagem: 'Não foi possível conectar ao banco de dados.',
     });
   }
 };

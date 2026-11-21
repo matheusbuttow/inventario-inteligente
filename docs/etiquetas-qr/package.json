@@ -1,0 +1,17 @@
+{
+  "name": "etiquetas-qr",
+  "private": true,
+  "description": "Gera a folha de etiquetas QR dos componentes para impressão",
+  "type": "module",
+  "scripts": {
+    "gerar": "node gerar-etiquetas.mjs",
+    "exemplo": "node gerar-etiquetas.mjs --json exemplo-componentes.json"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "pg": "^8.23.1",
+    "qrcode": "^1.5.4"
+  }
+}

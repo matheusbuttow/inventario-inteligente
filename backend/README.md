@@ -17,4 +17,4 @@ src/
 Contrato da API: [`docs/openapi.yaml`](../docs/openapi.yaml).  
 Variáveis: [`.env.example`](../.env.example).
 
-Quando o `package.json` e o `Dockerfile` estiverem prontos, o Matheus descomenta o serviço `backend` no `docker-compose.yml`.
+O serviço `backend` já está ativo no `docker-compose.yml` (imagem em `Dockerfile`, código montado em `/app` com recarga automática via nodemon). Se mudar o `package.json`, rode `docker compose up -d --build backend`.

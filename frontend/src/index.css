@@ -1,0 +1,135 @@
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1f2937;
+  background: #f8fafc;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+.app {
+  min-height: 100dvh;
+}
+
+.conteudo {
+  padding: 1.5rem 1rem 6rem;
+}
+
+.menu {
+  display: flex;
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  justify-content: space-around;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+}
+
+.menu a {
+  display: flex;
+  min-height: 48px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  color: #475569;
+  text-decoration: none;
+}
+
+.menu a.active {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 2rem;
+}
+
+/* ---------- telas ---------- */
+h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
+a { color: #2563eb; }
+
+.topo {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.75rem 1rem; background: #ffffff; border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+}
+.conteudo { max-width: 40rem; margin: 0 auto; }
+
+.botao {
+  min-height: 48px; padding: 0.6rem 1.1rem; border: 0; border-radius: 10px;
+  background: #2563eb; color: #ffffff; font-size: 1rem; font-weight: 600; cursor: pointer;
+}
+.botao:disabled { opacity: 0.6; cursor: wait; }
+.botao-grande { width: 100%; min-height: 64px; font-size: 1.25rem; }
+.botao-devolver { background: #16a34a; }
+.botao-secundario { background: #e2e8f0; color: #1f2937; width: 100%; margin-top: 1rem; }
+.botao-link { border: 0; background: none; color: #2563eb; font-size: 1rem; cursor: pointer; }
+
+.login { max-width: 24rem; margin: 0 auto; padding: 3rem 1.25rem; }
+.subtitulo { color: #475569; margin-top: 0.25rem; }
+.formulario { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.formulario label { display: grid; gap: 0.35rem; font-weight: 600; }
+input {
+  min-height: 48px; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 10px;
+  font-size: 1rem; background: #ffffff;
+}
+.busca { width: 100%; }
+
+.filtros { display: flex; gap: 0.5rem; overflow-x: auto; margin: 0.75rem 0; }
+.filtro {
+  min-height: 40px; padding: 0.4rem 0.9rem; border: 1px solid #cbd5e1; border-radius: 999px;
+  background: #ffffff; color: #334155; white-space: nowrap; cursor: pointer;
+}
+.filtro.ativo { background: #2563eb; border-color: #2563eb; color: #ffffff; }
+
+.lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+.cartao, .resultado {
+  display: grid; gap: 0.35rem; padding: 0.9rem 1rem; border: 1px solid #e5e7eb; border-radius: 12px;
+  background: #ffffff; color: inherit; text-decoration: none;
+}
+.cartao-atrasado { border-color: #f87171; background: #fef2f2; }
+.cartao-topo { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.detalhe { color: #475569; font-size: 0.95rem; }
+
+.badge { padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+.badge-disponivel { background: #dcfce7; color: #166534; }
+.badge-emprestado { background: #fef3c7; color: #92400e; }
+.badge-manutencao { background: #e2e8f0; color: #334155; }
+.badge-atrasado { background: #fee2e2; color: #991b1b; }
+
+.ficha { display: grid; grid-template-columns: max-content 1fr; gap: 0.4rem 1rem; margin: 1rem 0; }
+.ficha dt { color: #64748b; }
+.ficha dd { margin: 0; }
+.voltar, .link { display: inline-block; margin: 0.5rem 0 1rem; }
+
+.acoes { display: grid; gap: 0.75rem; margin: 1rem 0; }
+.aviso { padding: 0.75rem; border-radius: 10px; background: #fef9c3; color: #713f12; }
+.mensagem-ok { color: #166534; font-weight: 600; }
+.mensagem-erro { color: #b91c1c; font-weight: 600; }
+
+.estado { color: #475569; text-align: center; padding: 1.5rem 0; }
+.estado-erro { color: #b91c1c; }
+
+.leitor { width: 100%; max-width: 22rem; margin: 0 auto 1rem; border-radius: 12px; overflow: hidden; }
+.leitor.oculto { display: none; }
+.codigo-manual { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.codigo-manual input { flex: 1; min-width: 0; }

@@ -41,20 +41,21 @@ services:
       - ./backend:/app
       - /app/node_modules
 
-  # Ativado quando Lucas subir o projeto React+Vite em frontend/
-  # frontend:
-  #   build: ./frontend
-  #   container_name: inventario-frontend
-  #   restart: unless-stopped
-  #   environment:
-  #     VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
-  #   ports:
-  #     - "5173:5173"
-  #   depends_on:
-  #     - backend
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
+  frontend:
+    build: ./frontend
+    container_name: inventario-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+      # Recarrega ao salvar arquivos montados do Windows/macOS
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 volumes:
   postgres_data:

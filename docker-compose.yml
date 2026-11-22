@@ -12,29 +12,34 @@ services:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Migrations/seeds e o script que os aplica (ver README, seção 6)
+      - ./database:/database:ro
+      - ./scripts:/scripts:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inventario} -d ${POSTGRES_DB:-inventario}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # Ativado quando Pietro subir o projeto Express em backend/
-  # backend:
-  #   build: ./backend
-  #   container_name: inventario-backend
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   environment:
-  #     POSTGRES_HOST: db
-  #     POSTGRES_PORT: 5432
-  #   ports:
-  #     - "${API_PORT:-3000}:3000"
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   volumes:
-  #     - ./backend:/app
-  #     - /app/node_modules
+  backend:
+    build: ./backend
+    container_name: inventario-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      PORT: 3000
+    ports:
+      - "${API_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    # nodemon com -L (polling) para recarregar também no Windows/macOS
+    command: ["npm", "run", "dev", "--", "-L"]
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
 
   # Ativado quando Lucas subir o projeto React+Vite em frontend/
   # frontend:

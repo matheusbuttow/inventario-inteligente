@@ -196,11 +196,7 @@ paths:
         "401":
           $ref: "#/components/responses/NaoAutenticado"
         "404":
-          description: Componente não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Erro"
+          $ref: "#/components/responses/NaoEncontrado"
     put:
       tags: [Componentes]
       summary: Edita componente (admin)
@@ -227,11 +223,7 @@ paths:
         "403":
           $ref: "#/components/responses/SemPermissao"
         "404":
-          description: Componente não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Erro"
+          $ref: "#/components/responses/NaoEncontrado"
     delete:
       tags: [Componentes]
       summary: Remove componente (admin)
@@ -246,11 +238,7 @@ paths:
         "403":
           $ref: "#/components/responses/SemPermissao"
         "404":
-          description: Componente não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Erro"
+          $ref: "#/components/responses/NaoEncontrado"
 
   /componentes/qr/{codigo}:
     get:
@@ -330,6 +318,9 @@ paths:
               $ref: "#/components/schemas/EmprestimoCreate"
             example:
               componente_id: 12
+      description: |
+        Falha com 409 `COMPONENTE_JA_EMPRESTADO` se o componente já tem um empréstimo aberto
+        e com 409 `COMPONENTE_EM_MANUTENCAO` se o status do componente é `manutencao`.
       responses:
         "201":
           description: Empréstimo registrado
@@ -341,8 +332,25 @@ paths:
           $ref: "#/components/responses/DadosInvalidos"
         "401":
           $ref: "#/components/responses/NaoAutenticado"
+        "404":
+          $ref: "#/components/responses/NaoEncontrado"
         "409":
-          $ref: "#/components/responses/ComponenteJaEmprestado"
+          description: Componente indisponível (já emprestado ou em manutenção)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                jaEmprestado:
+                  summary: Já emprestado
+                  value:
+                    erro: COMPONENTE_JA_EMPRESTADO
+                    mensagem: Este componente está com Fulano desde 14/10.
+                emManutencao:
+                  summary: Em manutenção
+                  value:
+                    erro: COMPONENTE_EM_MANUTENCAO
+                    mensagem: Este componente está em manutenção e não pode ser emprestado.
 
   /emprestimos/{id}/devolver:
     patch:
@@ -370,11 +378,7 @@ paths:
         "403":
           $ref: "#/components/responses/SemPermissao"
         "404":
-          description: Empréstimo não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Erro"
+          $ref: "#/components/responses/NaoEncontrado"
         "409":
           $ref: "#/components/responses/JaDevolvido"
 
@@ -715,6 +719,16 @@ components:
             erro: SEM_PERMISSAO
             mensagem: Você não tem permissão para esta ação.
 
+    NaoEncontrado:
+      description: Recurso com esse id não existe
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: NAO_ENCONTRADO
+            mensagem: Componente não encontrado.
+
     QrInvalido:
       description: Código QR não corresponde a nenhum componente
       content:
@@ -724,16 +738,6 @@ components:
           example:
             erro: QR_INVALIDO
             mensagem: Nenhum componente encontrado para este QR Code.
-
-    ComponenteJaEmprestado:
-      description: Tentativa de pegar componente já emprestado
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Erro"
-          example:
-            erro: COMPONENTE_JA_EMPRESTADO
-            mensagem: Este componente está com Fulano desde 14/10.
 
     JaDevolvido:
       description: Tentativa de devolver empréstimo já fechado

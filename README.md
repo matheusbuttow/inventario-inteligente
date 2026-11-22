@@ -122,35 +122,41 @@ cd inventario-inteligente
 # 2. Criar o arquivo de ambiente
 cp .env.example .env
 
-# 3. Subir os serviços
-docker compose up --build
+# 3. Subir banco e back-end
+#    Se a porta 5432 já estiver ocupada na sua máquina, mude POSTGRES_HOST_PORT no .env (ex.: 5433)
+docker compose up -d --build
+
+# 4. Criar as tabelas e os dados de teste (roda dentro do container; funciona no Windows também)
+docker compose exec db sh /scripts/preparar-banco.sh
+
+# 5. Conferir se a API está no ar e falando com o banco
+curl http://localhost:3000/api/health
 ```
 
-**Semana 1 (até o back-end e o front-end entrarem no Compose):** sobe só o Postgres.
+O passo 4 aplica, em ordem alfabética, todos os `.sql` de `database/migrations/` e depois os de `database/seeds/` (Thiago). Se o banco já estiver preparado, o script não faz nada. Para recomeçar do zero, rode `docker compose down -v` e repita os passos 3 e 4.
 
-```bash
-docker compose up -d db
-```
-
-Quando Pietro e Lucas entregarem Dockerfile/`package.json`, descomente os serviços `backend` e `frontend` em `docker-compose.yml` e rode:
-
-```bash
-docker compose up --build
-
-# Em outro terminal, migrations e seeds (Thiago)
-docker compose exec backend npm run migrate
-docker compose exec backend npm run seed
-```
-
-| Serviço | Endereço | Disponível |
+| Serviço | Endereço | Situação |
 | --- | --- | --- |
-| PostgreSQL | localhost:5432 | Semana 1 (já) |
-| API | http://localhost:3000 | Quando o back-end entrar no Compose |
-| Documentação da API (Swagger) | http://localhost:3000/docs | Quando o back-end servir o OpenAPI |
-| Front-end | http://localhost:5173 | Quando o front-end entrar no Compose |
-| Contrato OpenAPI (fonte) | [`docs/openapi.yaml`](docs/openapi.yaml) | Semana 1 (já) |
+| PostgreSQL | `localhost:5432` (ou o valor de `POSTGRES_HOST_PORT`) | No Compose |
+| API | http://localhost:3000 | No Compose. O health check está em `/api/health` por enquanto; o contrato prevê `/health` (ver [`docs/integracao-semana1.md`](docs/integracao-semana1.md)) |
+| Front-end | http://localhost:5173 | Entra no Compose quando o PR do front for para a `main`. Até lá: `cd frontend && npm install && npm run dev` |
+| Documentação da API (Swagger) | http://localhost:3000/docs | Ainda não servida pela API. Enquanto isso, abra o contrato em https://editor.swagger.io |
+| Contrato OpenAPI (fonte) | [`docs/openapi.yaml`](docs/openapi.yaml) | Disponível |
 
 **Usuários de teste (criados pelo seed):** veja o arquivo `database/seeds/` — não coloque senhas reais no repositório.
+
+### Rodar o back-end sem Docker (opcional)
+
+```bash
+docker compose up -d db            # só o banco
+cd backend && npm install
+# no .env da raiz: POSTGRES_HOST=localhost e POSTGRES_PORT=<valor de POSTGRES_HOST_PORT>
+npm run dev
+```
+
+### Gerar etiquetas QR
+
+Veja [`docs/etiquetas-qr/README.md`](docs/etiquetas-qr/README.md). Resumo: `cd docs/etiquetas-qr && npm install && npm run gerar`.
 
 ### Testar a câmera no celular
 
@@ -162,8 +168,11 @@ O navegador só libera a câmera em HTTPS ou em `localhost`. Para testar no celu
 docker compose down              # parar tudo
 docker compose down -v           # parar e apagar os dados do banco
 docker compose logs -f backend   # ver logs da API
-docker compose exec backend npm test
+docker compose exec db psql -U inventario -d inventario   # abrir o console do banco
+docker compose up -d --build backend   # reconstruir a API depois de mudar o package.json
 ```
+
+O código do back-end é montado no container e recarrega sozinho (nodemon). Os testes automatizados (`npm test`) ainda não existem.
 
 ## 7. Variáveis de ambiente
 
@@ -180,6 +189,7 @@ docker compose exec backend npm test
 | `API_PORT` | `3000` | Porta da API |
 | `VITE_API_URL` | `http://localhost:3000` | Endereço da API usado pelo front-end |
 | `DIAS_ATRASO` | `7` | Dias até um empréstimo ser considerado atrasado |
+| `ETIQUETAS_DB_HOST` | `localhost` | Opcional. Host do banco usado pelo gerador de etiquetas QR (roda fora do Docker) |
 
 > Se a porta 5432 do host já estiver em uso, defina `POSTGRES_HOST_PORT=5433` no `.env`. Dentro da rede Docker o banco continua em `db:5432`.
 
@@ -272,8 +282,10 @@ Todas as rotas, exceto `/health`, `/auth/registrar` e `/auth/login`, exigem o ca
 | 400 | `DADOS_INVALIDOS` | Corpo da requisição incompleto |
 | 401 | `NAO_AUTENTICADO` | Token ausente ou inválido |
 | 403 | `SEM_PERMISSAO` | Rota de admin acessada por aluno |
+| 404 | `NAO_ENCONTRADO` | Componente ou empréstimo com esse `id` não existe |
 | 404 | `QR_INVALIDO` | Código não corresponde a nenhum componente |
 | 409 | `COMPONENTE_JA_EMPRESTADO` | Tentativa de pegar componente já emprestado |
+| 409 | `COMPONENTE_EM_MANUTENCAO` | Tentativa de pegar componente com status `manutencao` |
 | 409 | `JA_DEVOLVIDO` | Tentativa de devolver empréstimo já fechado |
 
 ## 10. Fluxo principal do usuário

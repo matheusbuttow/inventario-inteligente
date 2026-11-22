@@ -69,7 +69,6 @@ paths:
               matricula: "202312345"
               email: maria@furg.br
               senha: senhaSegura123
-              perfil: aluno
       responses:
         "201":
           description: Usuário criado
@@ -200,6 +199,7 @@ paths:
     put:
       tags: [Componentes]
       summary: Edita componente (admin)
+      description: 'O status aceita só "disponivel" ou "manutencao" (409 COMPONENTE_JA_EMPRESTADO se houver empréstimo aberto); "emprestado" muda sozinho ao pegar e devolver.'
       operationId: putComponente
       parameters:
         - $ref: "#/components/parameters/ComponenteId"
@@ -403,6 +403,7 @@ paths:
     get:
       tags: [Empréstimos]
       summary: Histórico de empréstimos
+      description: Para aluno, os empréstimos de outras pessoas trazem só id e nome do usuário; admin vê todos os dados.
       operationId: getEmprestimosHistorico
       parameters:
         - name: componente_id
@@ -500,9 +501,9 @@ components:
           type: string
           minLength: 6
           format: password
-        perfil:
-          $ref: "#/components/schemas/Perfil"
-          default: aluno
+      description: >-
+        O cadastro público sempre cria perfil "aluno"; um campo "perfil" enviado é ignorado.
+        Administradores são criados direto no banco.
 
     LoginRequest:
       type: object

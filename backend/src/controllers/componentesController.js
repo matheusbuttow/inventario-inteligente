@@ -2,6 +2,11 @@ const db = require('../config/database');
 const { dadosInvalidos, naoEncontrado, qrInvalido, conflito } = require('../utils/errors');
 const { STATUS_VALIDOS, parseIntPositivo, textoValido } = require('../utils/validators');
 
+// 'emprestado' só muda pelo fluxo de empréstimo/devolução; o admin escolhe entre estes dois.
+const STATUS_EDITAVEIS = ['disponivel', 'manutencao'];
+const MSG_STATUS_EDITAVEL =
+  'Status inválido. Use "disponivel" ou "manutencao"; "emprestado" muda sozinho ao pegar e devolver.';
+
 const SELECT_COMPONENTE_COMPLETO = `
   SELECT
     c.id,
@@ -158,10 +163,8 @@ const criar = async (req, res, next) => {
     if (!localizacaoId) {
       return next(dadosInvalidos('O campo localizacao_id deve ser um inteiro positivo.'));
     }
-    if (!STATUS_VALIDOS.includes(status)) {
-      return next(
-        dadosInvalidos('Status inválido. Use "disponivel", "emprestado" ou "manutencao".')
-      );
+    if (!STATUS_EDITAVEIS.includes(status)) {
+      return next(dadosInvalidos(MSG_STATUS_EDITAVEL));
     }
 
     const { rows } = await db.query(
@@ -194,6 +197,7 @@ const atualizar = async (req, res, next) => {
     const body = req.body || {};
     const campos = [];
     const valores = [];
+    let statusAlterado = false;
 
     if (body.nome !== undefined) {
       const nome = textoValido(body.nome, { min: 1, max: 120 });
@@ -232,13 +236,13 @@ const atualizar = async (req, res, next) => {
     }
 
     if (body.status !== undefined) {
-      if (!STATUS_VALIDOS.includes(body.status)) {
-        return next(
-          dadosInvalidos('Status inválido. Use "disponivel", "emprestado" ou "manutencao".')
-        );
+      if (!STATUS_EDITAVEIS.includes(body.status)) {
+        return next(dadosInvalidos(MSG_STATUS_EDITAVEL));
       }
       valores.push(body.status);
+      // Com empréstimo aberto o status continua 'emprestado' (o UPDATE não muda nenhuma linha).
       campos.push(`status = $${valores.length}`);
+      statusAlterado = true;
     }
 
     if (campos.length === 0) {
@@ -246,15 +250,31 @@ const atualizar = async (req, res, next) => {
     }
 
     valores.push(id);
+    const semEmprestimoAberto = statusAlterado
+      ? ` AND NOT EXISTS (
+           SELECT 1 FROM emprestimo e WHERE e.componente_id = componente.id AND e.devolvido_em IS NULL
+         )`
+      : '';
     const { rows } = await db.query(
       `UPDATE componente
        SET ${campos.join(', ')}
-       WHERE id = $${valores.length}
+       WHERE id = $${valores.length}${semEmprestimoAberto}
        RETURNING id`,
       valores
     );
 
     if (!rows[0]) {
+      if (statusAlterado) {
+        const existe = await db.query('SELECT 1 FROM componente WHERE id = $1', [id]);
+        if (existe.rows[0]) {
+          return next(
+            conflito(
+              'COMPONENTE_JA_EMPRESTADO',
+              'Este componente está emprestado. Registre a devolução antes de mudar o status.'
+            )
+          );
+        }
+      }
       return next(naoEncontrado('Componente não encontrado.'));
     }
 

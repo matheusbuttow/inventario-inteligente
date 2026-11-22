@@ -38,21 +38,33 @@ const SELECT_EMPRESTIMO_COMPLETO = `
   LEFT JOIN localizacao l ON l.id = c.localizacao_id
 `;
 
-function mapEmprestimo(row) {
+// Matrícula, e-mail e perfil de outra pessoa só aparecem para admin; o aluno vê só o nome.
+function podeVerDadosDoUsuario(viewer, usuarioId) {
+  return Boolean(viewer) && (viewer.perfil === 'admin' || viewer.id === usuarioId);
+}
+
+function mapUsuario(row, viewer) {
+  if (!podeVerDadosDoUsuario(viewer, row.usr_id)) {
+    return { id: row.usr_id, nome: row.usr_nome };
+  }
+  return {
+    id: row.usr_id,
+    nome: row.usr_nome,
+    matricula: row.usr_matricula,
+    email: row.usr_email,
+    perfil: row.usr_perfil,
+    criado_em: row.usr_criado_em,
+  };
+}
+
+function mapEmprestimo(row, viewer) {
   return {
     id: row.id,
     usuario_id: row.usuario_id,
     componente_id: row.componente_id,
     retirado_em: row.retirado_em,
     devolvido_em: row.devolvido_em,
-    usuario: {
-      id: row.usr_id,
-      nome: row.usr_nome,
-      matricula: row.usr_matricula,
-      email: row.usr_email,
-      perfil: row.usr_perfil,
-      criado_em: row.usr_criado_em,
-    },
+    usuario: mapUsuario(row, viewer),
     componente: {
       id: row.comp_id,
       nome: row.comp_nome,
@@ -72,10 +84,10 @@ function mapEmprestimo(row) {
   };
 }
 
-async function buscarEmprestimoCompletoPorId(id) {
+async function buscarEmprestimoCompletoPorId(id, viewer) {
   const { rows } = await db.query(`${SELECT_EMPRESTIMO_COMPLETO} WHERE e.id = $1`, [id]);
   if (!rows[0]) return null;
-  return mapEmprestimo(rows[0]);
+  return mapEmprestimo(rows[0], viewer);
 }
 
 const criar = async (req, res, next) => {
@@ -156,7 +168,7 @@ const criar = async (req, res, next) => {
 
     await client.query('COMMIT');
 
-    const emprestimo = await buscarEmprestimoCompletoPorId(insertResult.rows[0].id);
+    const emprestimo = await buscarEmprestimoCompletoPorId(insertResult.rows[0].id, req.usuario);
     return res.status(201).json(emprestimo);
   } catch (error) {
     if (client) {
@@ -229,7 +241,7 @@ const devolver = async (req, res, next) => {
 
     await client.query('COMMIT');
 
-    const atualizado = await buscarEmprestimoCompletoPorId(id);
+    const atualizado = await buscarEmprestimoCompletoPorId(id, req.usuario);
     return res.status(200).json(atualizado);
   } catch (error) {
     if (client) {
@@ -251,7 +263,7 @@ const meus = async (req, res, next) => {
        ORDER BY e.retirado_em DESC, e.id DESC`,
       [req.usuario.id]
     );
-    return res.status(200).json(rows.map(mapEmprestimo));
+    return res.status(200).json(rows.map((row) => mapEmprestimo(row, req.usuario)));
   } catch (error) {
     return next(error);
   }
@@ -288,7 +300,7 @@ const historico = async (req, res, next) => {
       valores
     );
 
-    return res.status(200).json(rows.map(mapEmprestimo));
+    return res.status(200).json(rows.map((row) => mapEmprestimo(row, req.usuario)));
   } catch (error) {
     return next(error);
   }
@@ -304,7 +316,7 @@ const atrasados = async (req, res, next) => {
        ORDER BY e.retirado_em ASC, e.id ASC`,
       [diasAtraso]
     );
-    return res.status(200).json(rows.map(mapEmprestimo));
+    return res.status(200).json(rows.map((row) => mapEmprestimo(row, req.usuario)));
   } catch (error) {
     return next(error);
   }

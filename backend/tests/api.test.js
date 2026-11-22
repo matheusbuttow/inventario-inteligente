@@ -572,4 +572,110 @@ describe('API Inventário Inteligente', () => {
       assert.equal(atrasados.body.length, 1);
     });
   });
+
+  describe('Segurança (revisão do PR #6)', () => {
+    it('POST /auth/registrar ignora perfil "admin" e cria sempre aluno', async () => {
+      let perfilGravado;
+      mockQueryHandler = async (sql, params) => {
+        perfilGravado = params[4];
+        return {
+          rows: [{ id: 11, nome: params[0], matricula: params[1], email: params[2], perfil: params[4] }],
+        };
+      };
+
+      const res = await req('/auth/registrar', {
+        method: 'POST',
+        body: {
+          nome: 'Intruso',
+          matricula: '666',
+          email: 'intruso@example.invalid',
+          senha: 'qualquer123',
+          perfil: 'admin',
+        },
+      });
+
+      assert.equal(res.status, 201);
+      assert.equal(perfilGravado, 'aluno');
+      assert.equal(res.body.perfil, 'aluno');
+    });
+
+    function linhaEmprestimo(usuarioId, nome) {
+      return {
+        id: 100 + usuarioId,
+        usuario_id: usuarioId,
+        componente_id: 1,
+        retirado_em: '2026-11-20T12:00:00.000Z',
+        devolvido_em: null,
+        usr_id: usuarioId,
+        usr_nome: nome,
+        usr_matricula: `mat-${usuarioId}`,
+        usr_email: `u${usuarioId}@furg.br`,
+        usr_perfil: 'aluno',
+        usr_criado_em: '2026-10-01T12:00:00.000Z',
+        comp_id: 1,
+        comp_nome: 'Sensor',
+        comp_categoria: 'sensor',
+        comp_codigo_qr: 'qr-sensor-01',
+        comp_localizacao_id: null,
+        comp_status: 'emprestado',
+        comp_criado_em: '2026-10-01T12:00:00.000Z',
+        loc_id: null,
+      };
+    }
+
+    it('Histórico e atrasados mostram só o nome de outras pessoas para aluno', async () => {
+      mockQueryHandler = async () => ({
+        rows: [linhaEmprestimo(1, 'Aluno Teste'), linhaEmprestimo(7, 'Outra Pessoa')],
+      });
+
+      for (const rota of ['/emprestimos/historico', '/emprestimos/atrasados']) {
+        const res = await req(rota, { token: tokenAluno });
+        assert.equal(res.status, 200);
+        const proprio = res.body.find((e) => e.usuario_id === 1).usuario;
+        const outro = res.body.find((e) => e.usuario_id === 7).usuario;
+        assert.equal(proprio.email, 'u1@furg.br');
+        assert.deepEqual(outro, { id: 7, nome: 'Outra Pessoa' });
+      }
+
+      const admin = await req('/emprestimos/historico', { token: tokenAdmin });
+      assert.equal(admin.body.find((e) => e.usuario_id === 7).usuario.email, 'u7@furg.br');
+    });
+
+    it('Componente não aceita status "emprestado" por criação ou edição', async () => {
+      const criar = await req('/componentes', {
+        method: 'POST',
+        token: tokenAdmin,
+        body: { nome: 'X', categoria: 'y', codigo_qr: 'qr-x-01', localizacao_id: 1, status: 'emprestado' },
+      });
+      assert.equal(criar.status, 400);
+      assert.equal(criar.body.erro, 'DADOS_INVALIDOS');
+
+      const editar = await req('/componentes/1', {
+        method: 'PUT',
+        token: tokenAdmin,
+        body: { status: 'emprestado' },
+      });
+      assert.equal(editar.status, 400);
+      assert.equal(editar.body.erro, 'DADOS_INVALIDOS');
+    });
+
+    it('PUT /componentes/:id recusa mudar status com empréstimo aberto', async () => {
+      mockQueryHandler = async (sql) => {
+        if (/UPDATE componente/i.test(sql)) {
+          assert.match(sql, /NOT EXISTS/i);
+          return { rows: [] };
+        }
+        if (/SELECT 1 FROM componente/i.test(sql)) return { rows: [{ '?column?': 1 }] };
+        return { rows: [] };
+      };
+
+      const res = await req('/componentes/1', {
+        method: 'PUT',
+        token: tokenAdmin,
+        body: { status: 'manutencao' },
+      });
+      assert.equal(res.status, 409);
+      assert.equal(res.body.erro, 'COMPONENTE_JA_EMPRESTADO');
+    });
+  });
 });

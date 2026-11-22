@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { AppError, dadosInvalidos, naoAutenticado, conflito } = require('../utils/errors');
-const { PERFIS_VALIDOS, textoValido, emailValido } = require('../utils/validators');
+const { textoValido, emailValido } = require('../utils/validators');
 
 const BCRYPT_ROUNDS = 10;
 
@@ -16,7 +16,8 @@ const registrar = async (req, res, next) => {
     );
     const email = emailValido(body.email);
     const senha = typeof body.senha === 'string' ? body.senha : '';
-    const perfil = body.perfil === undefined ? 'aluno' : body.perfil;
+    // Cadastro público sempre cria aluno; admin só é criado direto no banco (seed ou SQL).
+    const perfil = 'aluno';
 
     if (!nome) {
       return next(dadosInvalidos('O campo nome é obrigatório e deve ter até 120 caracteres.'));
@@ -29,9 +30,6 @@ const registrar = async (req, res, next) => {
     }
     if (senha.length < 6) {
       return next(dadosInvalidos('A senha deve ter no mínimo 6 caracteres.'));
-    }
-    if (!PERFIS_VALIDOS.includes(perfil)) {
-      return next(dadosInvalidos('Perfil inválido. Use "aluno" ou "admin".'));
     }
 
     const senhaHash = await bcrypt.hash(senha, BCRYPT_ROUNDS);

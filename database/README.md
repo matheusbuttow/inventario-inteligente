@@ -10,6 +10,17 @@ Pasta reservada para o modelo PostgreSQL do inventário.
 | `seeds/` | Thiago | Componentes reais + 2 usuários de teste (sem senhas reais no Git) |
 | `diagrama-er.png` | Thiago | Diagrama entidade-relacionamento (Semana 2) |
 
+## Usuários de teste (criados pelo seed)
+
+| Perfil | E-mail | Matrícula | Senha |
+| --- | --- | --- | --- |
+| aluno | `aluno@furg.br` | `12345` | `senha123` |
+| admin | `admin@furg.br` | `99999` | `senha123` |
+
+Só para desenvolvimento local. As datas usam `TIMESTAMPTZ`, então a API mostra o horário certo
+mesmo rodando fora do Docker. Se o seu banco foi criado antes desta mudança, recrie com
+`docker compose down -v`.
+
 ## Contrato com o back-end
 
 Qualquer mudança de tabela ou coluna = **migration nova**, avisada no grupo antes do merge (Thiago → Pietro).

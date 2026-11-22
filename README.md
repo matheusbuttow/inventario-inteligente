@@ -122,7 +122,7 @@ cd inventario-inteligente
 # 2. Criar o arquivo de ambiente
 cp .env.example .env
 
-# 3. Subir banco e back-end
+# 3. Subir banco, back-end e front-end
 #    Se a porta 5432 já estiver ocupada na sua máquina, mude POSTGRES_HOST_PORT no .env (ex.: 5433)
 docker compose up -d --build
 
@@ -130,7 +130,9 @@ docker compose up -d --build
 docker compose exec db sh /scripts/preparar-banco.sh
 
 # 5. Conferir se a API está no ar e falando com o banco
-curl http://localhost:3000/api/health
+curl http://localhost:3000/health
+
+# 6. Abrir o sistema: http://localhost:5173 (login com um dos usuários de teste abaixo)
 ```
 
 O passo 4 aplica, em ordem alfabética, todos os `.sql` de `database/migrations/` e depois os de `database/seeds/` (Thiago). Se o banco já estiver preparado, o script não faz nada. Para recomeçar do zero, rode `docker compose down -v` e repita os passos 3 e 4.
@@ -138,12 +140,19 @@ O passo 4 aplica, em ordem alfabética, todos os `.sql` de `database/migrations/
 | Serviço | Endereço | Situação |
 | --- | --- | --- |
 | PostgreSQL | `localhost:5432` (ou o valor de `POSTGRES_HOST_PORT`) | No Compose |
-| API | http://localhost:3000 | No Compose. O health check está em `/api/health` por enquanto; o contrato prevê `/health` (ver [`docs/integracao-semana1.md`](docs/integracao-semana1.md)) |
-| Front-end | http://localhost:5173 | Entra no Compose quando o PR do front for para a `main`. Até lá: `cd frontend && npm install && npm run dev` |
+| API | http://localhost:3000 | No Compose. Health check em `/health` |
+| Front-end | http://localhost:5173 | No Compose |
 | Documentação da API (Swagger) | http://localhost:3000/docs | Ainda não servida pela API. Enquanto isso, abra o contrato em https://editor.swagger.io |
 | Contrato OpenAPI (fonte) | [`docs/openapi.yaml`](docs/openapi.yaml) | Disponível |
 
-**Usuários de teste (criados pelo seed):** veja o arquivo `database/seeds/` — não coloque senhas reais no repositório.
+**Usuários de teste (criados pelo seed), só para desenvolvimento local:**
+
+| Perfil | E-mail | Senha |
+| --- | --- | --- |
+| aluno | `aluno@furg.br` | `senha123` |
+| admin | `admin@furg.br` | `senha123` |
+
+O cadastro público (`POST /auth/registrar`) sempre cria **aluno**. Admin novo é criado direto no banco.
 
 ### Rodar o back-end sem Docker (opcional)
 
@@ -170,9 +179,10 @@ docker compose down -v           # parar e apagar os dados do banco
 docker compose logs -f backend   # ver logs da API
 docker compose exec db psql -U inventario -d inventario   # abrir o console do banco
 docker compose up -d --build backend   # reconstruir a API depois de mudar o package.json
+docker compose exec backend npm test   # testes automatizados da API
 ```
 
-O código do back-end é montado no container e recarrega sozinho (nodemon). Os testes automatizados (`npm test`) ainda não existem.
+O código do back-end e do front-end é montado nos containers e recarrega sozinho ao salvar.
 
 ## 7. Variáveis de ambiente
 

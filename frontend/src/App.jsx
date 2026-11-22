@@ -8,7 +8,7 @@ import MeusEmprestimos from "./pages/MeusEmprestimos";
 import Historico from "./pages/Historico";
 
 function Privada({ children }) {
-  return localStorage.getItem("token") ? children : <Navigate to="/login" />;
+  return localStorage.getItem("token") ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -23,6 +23,7 @@ export default function App() {
           <Route path="/meus-emprestimos" element={<MeusEmprestimos />} />
           <Route path="/historico" element={<Historico />} />
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

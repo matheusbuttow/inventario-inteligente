@@ -1,0 +1,20 @@
+[
+  {
+    "codigo_qr": "qr-hc-sr04-01",
+    "nome": "Sensor Ultrassônico HC-SR04",
+    "local": "Armário 2 — Gaveta B",
+    "laboratorio": "Lab. de Sistemas Embarcados"
+  },
+  {
+    "codigo_qr": "qr-arduino-01",
+    "nome": "Arduino Uno R3",
+    "local": "Armário 2 — Gaveta B",
+    "laboratorio": "Lab. de Sistemas Embarcados"
+  },
+  {
+    "codigo_qr": "qr-osc-01",
+    "nome": "Osciloscópio Digital",
+    "local": "Armário 1 — Prateleira C",
+    "laboratorio": "Lab. de Automação"
+  }
+]

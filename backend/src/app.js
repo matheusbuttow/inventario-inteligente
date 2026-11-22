@@ -1,14 +1,31 @@
-require('dotenv').config({ path: '../.env' }); 
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
-const express = require('express')
+const express = require('express');
+const corsMiddleware = require('./middlewares/corsMiddleware');
+const errorMiddleware = require('./middlewares/errorMiddleware');
 const routes = require('./routes');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || process.env.API_PORT || 3000;
 
+app.use(corsMiddleware);
 app.use(express.json());
-app.use('/api', routes); // A rota ficará acessível em /api/health
+app.use('/', routes);
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+app.use((req, res) => {
+  res.status(404).json({
+    erro: 'NAO_ENCONTRADO',
+    mensagem: 'Rota não encontrada.',
+  });
 });
+
+app.use(errorMiddleware);
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+  });
+}
+
+module.exports = app;

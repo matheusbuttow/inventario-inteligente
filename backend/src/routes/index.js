@@ -1,7 +1,16 @@
 const express = require('express');
-const router = express.Router();
 const healthController = require('../controllers/healthController');
+const authRoutes = require('./authRoutes');
+const localizacoesRoutes = require('./localizacoesRoutes');
+const componentesRoutes = require('./componentesRoutes');
+const emprestimosRoutes = require('./emprestimosRoutes');
+
+const router = express.Router();
 
 router.get('/health', healthController.checkHealth);
+router.use('/auth', authRoutes);
+router.use('/localizacoes', localizacoesRoutes);
+router.use('/componentes', componentesRoutes);
+router.use('/emprestimos', emprestimosRoutes);
 
 module.exports = router;

@@ -2,9 +2,11 @@ import { useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import AcoesComponente from "../components/AcoesComponente";
 import { Carregando, Erro } from "../components/Estado";
+import EtiquetaQr from "../components/EtiquetaQr";
+import Foto from "../components/Foto";
 import StatusBadge from "../components/StatusBadge";
 import useCarregar from "../hooks/useCarregar";
-import { buscarComponente } from "../services/inventario";
+import { buscarComponente, ehAdmin } from "../services/inventario";
 import { dataHora, diasDesde, local } from "../utils/formato";
 
 export default function Detalhe() {
@@ -19,6 +21,7 @@ export default function Detalhe() {
   return (
     <section>
       <Link to="/" className="voltar">← Componentes</Link>
+      <Foto componente={componente} tamanho="grande" />
       <h1>{componente.nome}</h1>
       <StatusBadge status={componente.status} />
       <dl className="ficha">
@@ -41,6 +44,12 @@ export default function Detalhe() {
       <Link to={`/historico?componente_id=${componente.id}`} className="link">
         Ver histórico deste componente
       </Link>
+      {ehAdmin() && (
+        <div className="painel-admin">
+          <Link to={`/admin/componentes/${componente.id}`} className="botao botao-claro">Editar equipamento</Link>
+          <EtiquetaQr codigo={componente.codigo_qr} nome={componente.nome} />
+        </div>
+      )}
     </section>
   );
 }

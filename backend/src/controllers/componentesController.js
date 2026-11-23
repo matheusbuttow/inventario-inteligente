@@ -16,6 +16,8 @@ const SELECT_COMPONENTE_COMPLETO = `
     c.localizacao_id,
     c.status,
     c.criado_em,
+    (c.foto IS NOT NULL) AS tem_foto,
+    c.foto_atualizada_em,
     l.id AS loc_id,
     l.nome AS loc_nome,
     l.laboratorio AS loc_laboratorio,
@@ -29,6 +31,12 @@ const SELECT_COMPONENTE_COMPLETO = `
   LEFT JOIN usuario u ON u.id = e.usuario_id
 `;
 
+function urlDaFoto(row) {
+  if (!row.tem_foto) return null;
+  const versao = row.foto_atualizada_em ? new Date(row.foto_atualizada_em).getTime() : 0;
+  return `/componentes/${row.id}/foto?v=${versao}`;
+}
+
 function mapComponente(row, incluirEmprestimo = true) {
   const componente = {
     id: row.id,
@@ -38,6 +46,7 @@ function mapComponente(row, incluirEmprestimo = true) {
     localizacao_id: row.localizacao_id,
     status: row.status,
     criado_em: row.criado_em,
+    foto_url: urlDaFoto(row),
     localizacao: row.loc_id
       ? {
           id: row.loc_id,
@@ -331,7 +340,97 @@ const remover = async (req, res, next) => {
   }
 };
 
+const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
+const TAMANHO_MAX_FOTO = 2 * 1024 * 1024;
+
+// Recebe { imagem: "data:image/jpeg;base64,..." } e grava os bytes no banco.
+const salvarFoto = async (req, res, next) => {
+  try {
+    const id = parseIntPositivo(req.params.id);
+    if (!id) {
+      return next(dadosInvalidos('ID do componente inválido.'));
+    }
+
+    const imagem = req.body && typeof req.body.imagem === 'string' ? req.body.imagem : '';
+    const partes = /^data:([a-z/+.-]+);base64,([A-Za-z0-9+/=\s]+)$/i.exec(imagem);
+    if (!partes) {
+      return next(dadosInvalidos('Envie a foto no campo imagem como data URL (data:image/jpeg;base64,...).'));
+    }
+    const tipo = partes[1].toLowerCase();
+    if (!TIPOS_FOTO.includes(tipo)) {
+      return next(dadosInvalidos('A foto deve ser JPEG, PNG ou WebP.'));
+    }
+    const bytes = Buffer.from(partes[2], 'base64');
+    if (bytes.length === 0) {
+      return next(dadosInvalidos('A foto está vazia.'));
+    }
+    if (bytes.length > TAMANHO_MAX_FOTO) {
+      return next(dadosInvalidos('A foto deve ter no máximo 2 MB.'));
+    }
+
+    const { rows } = await db.query(
+      `UPDATE componente SET foto = $1, foto_tipo = $2, foto_atualizada_em = NOW()
+       WHERE id = $3 RETURNING id`,
+      [bytes, tipo, id]
+    );
+    if (!rows[0]) {
+      return next(naoEncontrado('Componente não encontrado.'));
+    }
+
+    const componente = await buscarComponenteCompletoPorId(id, true);
+    return res.status(200).json(componente);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const removerFoto = async (req, res, next) => {
+  try {
+    const id = parseIntPositivo(req.params.id);
+    if (!id) {
+      return next(dadosInvalidos('ID do componente inválido.'));
+    }
+    const { rows } = await db.query(
+      `UPDATE componente SET foto = NULL, foto_tipo = NULL, foto_atualizada_em = NOW()
+       WHERE id = $1 RETURNING id`,
+      [id]
+    );
+    if (!rows[0]) {
+      return next(naoEncontrado('Componente não encontrado.'));
+    }
+    const componente = await buscarComponenteCompletoPorId(id, true);
+    return res.status(200).json(componente);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// Pública para funcionar direto em <img src>; a URL muda (?v=) quando a foto troca.
+const obterFoto = async (req, res, next) => {
+  try {
+    const id = parseIntPositivo(req.params.id);
+    if (!id) {
+      return next(dadosInvalidos('ID do componente inválido.'));
+    }
+    const { rows } = await db.query(
+      'SELECT foto, foto_tipo FROM componente WHERE id = $1 AND foto IS NOT NULL',
+      [id]
+    );
+    if (!rows[0]) {
+      return next(naoEncontrado('Este componente não tem foto.'));
+    }
+    res.set('Content-Type', rows[0].foto_tipo || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=86400');
+    return res.status(200).send(rows[0].foto);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
+  salvarFoto,
+  removerFoto,
+  obterFoto,
   listar,
   buscarPorId,
   buscarPorQr,

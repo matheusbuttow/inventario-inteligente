@@ -53,9 +53,14 @@ export function sair() {
   localStorage.removeItem("usuario");
 }
 
+export const ehAdmin = () => usuarioLogado()?.perfil === "admin";
+
 export async function login(email, senha) {
   const dados = MOCK
-    ? (await espera(), { token: "token-mock", usuario: { ...eu, perfil: "aluno" } })
+    ? (await espera(), {
+        token: "token-mock",
+        usuario: { ...eu, perfil: email.startsWith("admin") ? "admin" : "aluno" },
+      })
     : (await api.post("/auth/login", { email, senha })).data;
   localStorage.setItem("token", dados.token);
   localStorage.setItem("usuario", JSON.stringify(dados.usuario));
@@ -145,6 +150,149 @@ export async function historico(filtros = {}) {
       .reverse();
   }
   return (await api.get("/emprestimos/historico", { params: filtros })).data;
+}
+
+// ---------- fotos ----------
+const BASE_API = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+// foto_url vem relativa da API (/componentes/1/foto?v=...); no mock já é uma data URL.
+export const urlDaFoto = (componente) => {
+  const url = componente?.foto_url;
+  if (!url) return null;
+  return url.startsWith("data:") ? url : `${BASE_API}${url}`;
+};
+
+export async function salvarFoto(componenteId, dataUrl) {
+  if (MOCK) {
+    await espera(150);
+    const c = componentes.find((x) => x.id === Number(componenteId));
+    c.foto_url = dataUrl;
+    return comEmprestimo(c);
+  }
+  return (await api.put(`/componentes/${componenteId}/foto`, { imagem: dataUrl })).data;
+}
+
+export async function removerFoto(componenteId) {
+  if (MOCK) {
+    await espera(150);
+    const c = componentes.find((x) => x.id === Number(componenteId));
+    c.foto_url = null;
+    return comEmprestimo(c);
+  }
+  return (await api.delete(`/componentes/${componenteId}/foto`)).data;
+}
+
+// ---------- cadastro de componentes (admin) ----------
+const locaisMock = [
+  { id: 1, nome: "Armário 1 — Gaveta A", laboratorio: "Lab. de Sistemas Embarcados" },
+  { id: 2, nome: "Armário 2 — Gaveta B", laboratorio: "Lab. de Sistemas Embarcados" },
+];
+
+export async function criarComponente(dados) {
+  if (MOCK) {
+    await espera(150);
+    if (componentes.some((c) => c.codigo_qr === dados.codigo_qr))
+      throw erroApi(409, "CONFLITO", "Já existe um componente com este código QR.");
+    const novo = { ...dados, id: Math.max(0, ...componentes.map((c) => c.id)) + 1,
+      localizacao: locaisMock.find((l) => l.id === Number(dados.localizacao_id)) || null };
+    componentes.push(novo);
+    return comEmprestimo(novo);
+  }
+  return (await api.post("/componentes", dados)).data;
+}
+
+export async function atualizarComponente(id, dados) {
+  if (MOCK) {
+    await espera(150);
+    const c = componentes.find((x) => x.id === Number(id));
+    Object.assign(c, dados, {
+      localizacao: locaisMock.find((l) => l.id === Number(dados.localizacao_id)) || c.localizacao,
+    });
+    return comEmprestimo(c);
+  }
+  return (await api.put(`/componentes/${id}`, dados)).data;
+}
+
+export async function removerComponente(id) {
+  if (MOCK) {
+    await espera(150);
+    const i = componentes.findIndex((x) => x.id === Number(id));
+    componentes.splice(i, 1);
+    return;
+  }
+  await api.delete(`/componentes/${id}`);
+}
+
+// ---------- localizações (admin cadastra; todos listam) ----------
+export async function listarLocalizacoes() {
+  if (MOCK) { await espera(); return [...locaisMock]; }
+  return (await api.get("/localizacoes")).data;
+}
+
+export async function criarLocalizacao(dados) {
+  if (MOCK) {
+    await espera(150);
+    const novo = { ...dados, id: Math.max(0, ...locaisMock.map((l) => l.id)) + 1 };
+    locaisMock.push(novo);
+    return novo;
+  }
+  return (await api.post("/localizacoes", dados)).data;
+}
+
+export async function atualizarLocalizacao(id, dados) {
+  if (MOCK) {
+    await espera(150);
+    const l = locaisMock.find((x) => x.id === id);
+    Object.assign(l, dados);
+    return l;
+  }
+  return (await api.put(`/localizacoes/${id}`, dados)).data;
+}
+
+export async function removerLocalizacao(id) {
+  if (MOCK) {
+    await espera(150);
+    locaisMock.splice(locaisMock.findIndex((x) => x.id === id), 1);
+    return;
+  }
+  await api.delete(`/localizacoes/${id}`);
+}
+
+// ---------- pessoas (só admin) ----------
+const pessoasMock = [
+  { id: 1, nome: eu.nome, matricula: "12345", email: "aluno@furg.br", perfil: "aluno", ativo: true },
+  { id: 2, nome: "Administrador", matricula: "99999", email: "admin@furg.br", perfil: "admin", ativo: true },
+];
+
+export async function listarUsuarios() {
+  if (MOCK) { await espera(); return pessoasMock.map((p) => ({ ...p })); }
+  return (await api.get("/usuarios")).data;
+}
+
+export async function criarUsuario(dados) {
+  if (MOCK) {
+    await espera(150);
+    if (pessoasMock.some((p) => p.email === dados.email))
+      throw erroApi(409, "CONFLITO", "Este e-mail já está cadastrado.");
+    const resto = { ...dados };
+    delete resto.senha;
+    const novo = { ...resto, id: Math.max(0, ...pessoasMock.map((p) => p.id)) + 1, ativo: true };
+    pessoasMock.push(novo);
+    return novo;
+  }
+  return (await api.post("/usuarios", dados)).data;
+}
+
+export async function atualizarUsuario(id, dados) {
+  if (MOCK) {
+    await espera(150);
+    const p = pessoasMock.find((x) => x.id === id);
+    const resto = { ...dados };
+    delete resto.senha;
+    Object.assign(p, resto);
+    return { ...p };
+  }
+  return (await api.patch(`/usuarios/${id}`, dados)).data;
 }
 
 export const mensagemDeErro = (err, padrao = "Algo deu errado.") =>

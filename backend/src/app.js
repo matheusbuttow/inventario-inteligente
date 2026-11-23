@@ -10,7 +10,8 @@ const app = express();
 const PORT = process.env.PORT || process.env.API_PORT || 3000;
 
 app.use(corsMiddleware);
-app.use(express.json());
+// Fotos chegam em base64 (até 2 MB de imagem ≈ 2,7 MB de texto).
+app.use(express.json({ limit: '3mb' }));
 app.use('/', routes);
 
 app.use((req, res) => {

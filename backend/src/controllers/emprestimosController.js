@@ -29,6 +29,8 @@ const SELECT_EMPRESTIMO_COMPLETO = `
     c.localizacao_id AS comp_localizacao_id,
     c.status AS comp_status,
     c.criado_em AS comp_criado_em,
+    (c.foto IS NOT NULL) AS comp_tem_foto,
+    c.foto_atualizada_em AS comp_foto_atualizada_em,
     l.id AS loc_id,
     l.nome AS loc_nome,
     l.laboratorio AS loc_laboratorio
@@ -73,6 +75,9 @@ function mapEmprestimo(row, viewer) {
       localizacao_id: row.comp_localizacao_id,
       status: row.comp_status,
       criado_em: row.comp_criado_em,
+      foto_url: row.comp_tem_foto
+        ? `/componentes/${row.comp_id}/foto?v=${row.comp_foto_atualizada_em ? new Date(row.comp_foto_atualizada_em).getTime() : 0}`
+        : null,
       localizacao: row.loc_id
         ? {
             id: row.loc_id,

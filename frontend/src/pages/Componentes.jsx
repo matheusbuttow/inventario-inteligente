@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Carregando, Erro, Vazio } from "../components/Estado";
+import Foto from "../components/Foto";
 import StatusBadge from "../components/StatusBadge";
 import { listarComponentes, mensagemDeErro } from "../services/inventario";
 import { local } from "../utils/formato";
@@ -63,15 +64,18 @@ export default function Componentes() {
       <ul className="lista">
         {itens?.map((c) => (
           <li key={c.id}>
-            <Link to={`/componentes/${c.id}`} className="cartao">
-              <div className="cartao-topo">
-                <strong>{c.nome}</strong>
-                <StatusBadge status={c.status} />
+            <Link to={`/componentes/${c.id}`} className="cartao cartao-com-foto">
+              <Foto componente={c} />
+              <div className="cartao-texto">
+                <div className="cartao-topo">
+                  <strong>{c.nome}</strong>
+                  <StatusBadge status={c.status} />
+                </div>
+                <span className="detalhe">{local(c)}</span>
+                {c.emprestimo_aberto && (
+                  <span className="detalhe">Com {c.emprestimo_aberto.usuario_nome}</span>
+                )}
               </div>
-              <span className="detalhe">{local(c)}</span>
-              {c.emprestimo_aberto && (
-                <span className="detalhe">Com {c.emprestimo_aberto.usuario_nome}</span>
-              )}
             </Link>
           </li>
         ))}

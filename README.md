@@ -152,7 +152,26 @@ O passo 4 aplica, em ordem alfabética, todos os `.sql` de `database/migrations/
 | aluno | `aluno@furg.br` | `senha123` |
 | admin | `admin@furg.br` | `senha123` |
 
-O cadastro público (`POST /auth/registrar`) sempre cria **aluno**. Admin novo é criado direto no banco.
+O cadastro público (`POST /auth/registrar`) sempre cria **aluno**. Contas novas de aluno ou admin são criadas por um admin na tela **Admin → Pessoas**.
+
+### Área do admin
+
+Quem entra com perfil admin vê o item **Admin** no menu de baixo, com três abas:
+
+- **Equipamentos:** cadastrar, editar e excluir componentes, com **foto** (tirada pela câmera do celular ou escolhida do computador; o navegador reduz para no máximo 1024 px antes de enviar) e **etiqueta QR** pronta para imprimir.
+- **Pessoas:** cadastrar aluno ou admin, trocar senha, mudar perfil e desativar/reativar contas (conta desativada não entra).
+- **Locais:** cadastrar, editar e remover armários/gavetas e laboratórios.
+
+A API confere o perfil em todas essas rotas; aluno recebe 403.
+
+### Atualizar um banco que já existia
+
+`preparar-banco.sh` pode ser rodado de novo a qualquer momento: ele só aplica as migrations novas (registradas na tabela `schema_migracoes`) e não apaga dados. Depois de um `git pull`:
+
+```bash
+docker compose up -d --build -V   # -V recria o node_modules dos containers (pega dependências novas)
+docker compose exec db sh /scripts/preparar-banco.sh
+```
 
 ### Rodar o back-end sem Docker (opcional)
 
@@ -218,6 +237,7 @@ Usuario 1 ──── N Emprestimo N ──── 1 Componente N ──── 1
 | email | varchar(120) | único |
 | senha_hash | varchar(255) | bcrypt |
 | perfil | varchar(20) | `aluno` ou `admin` |
+| ativo | boolean | padrão `true`; `false` bloqueia o login |
 | criado_em | timestamp | padrão `now()` |
 
 ### Localizacao
@@ -236,6 +256,8 @@ Usuario 1 ──── N Emprestimo N ──── 1 Componente N ──── 1
 | codigo_qr | varchar(64) | único, com índice |
 | localizacao_id | int | FK → Localizacao |
 | status | varchar(20) | `disponivel`, `emprestado`, `manutencao` (com índice) |
+| foto / foto_tipo | bytea / varchar(40) | foto opcional (JPEG, PNG ou WebP, até 2 MB) |
+| foto_atualizada_em | timestamptz | muda a URL da foto quando ela é trocada |
 | criado_em | timestamp | padrão `now()` |
 
 ### Emprestimo
@@ -251,7 +273,7 @@ Usuario 1 ──── N Emprestimo N ──── 1 Componente N ──── 1
 
 ## 9. API REST
 
-Todas as rotas, exceto `/health`, `/auth/registrar` e `/auth/login`, exigem o cabeçalho `Authorization: Bearer <token>`. O contrato completo fica em `docs/openapi.yaml`.
+Todas as rotas, exceto `/health`, `/auth/registrar`, `/auth/login` e `GET /componentes/:id/foto`, exigem o cabeçalho `Authorization: Bearer <token>`. O contrato completo fica em `docs/openapi.yaml`.
 
 ### Autenticação
 | Método | Rota | Descrição |
@@ -270,8 +292,20 @@ Todas as rotas, exceto `/health`, `/auth/registrar` e `/auth/login`, exigem o ca
 | POST | `/componentes` | Cria (admin) |
 | PUT | `/componentes/:id` | Edita (admin) |
 | DELETE | `/componentes/:id` | Remove (admin) |
+| GET | `/componentes/:id/foto` | Imagem do componente (pública) |
+| PUT | `/componentes/:id/foto` | Envia/troca a foto, corpo `{ "imagem": "data:image/jpeg;base64,..." }` (admin) |
+| DELETE | `/componentes/:id/foto` | Remove a foto (admin) |
 | GET | `/localizacoes` | Lista |
 | POST | `/localizacoes` | Cria (admin) |
+| PUT | `/localizacoes/:id` | Edita (admin) |
+| DELETE | `/localizacoes/:id` | Remove (admin) |
+
+### Pessoas (só admin)
+| Método | Rota | Descrição |
+| --- | --- | --- |
+| GET | `/usuarios` | Lista as contas |
+| POST | `/usuarios` | Cria aluno ou admin |
+| PATCH | `/usuarios/:id` | Altera nome, e-mail, matrícula, perfil, senha ou `ativo` |
 
 ### Empréstimos
 | Método | Rota | Descrição |

@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { sair, usuarioLogado } from "../services/inventario";
+import { ehAdmin, sair, usuarioLogado } from "../services/inventario";
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -22,6 +22,7 @@ export default function Layout() {
         <NavLink to="/scanner">Escanear</NavLink>
         <NavLink to="/meus-emprestimos">Meus</NavLink>
         <NavLink to="/historico">Histórico</NavLink>
+        {ehAdmin() && <NavLink to="/admin">Admin</NavLink>}
       </nav>
     </div>
   );

@@ -2,6 +2,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AcoesComponente from "../components/AcoesComponente";
 import { Carregando, Erro } from "../components/Estado";
+import Foto from "../components/Foto";
 import StatusBadge from "../components/StatusBadge";
 import { buscarPorQr, mensagemDeErro } from "../services/inventario";
 import { local } from "../utils/formato";
@@ -117,6 +118,7 @@ export default function Scanner() {
       {erro && <Erro mensagem={erro} />}
       {componente && (
         <div className="resultado">
+          <Foto componente={componente} tamanho="grande" />
           <div className="cartao-topo">
             <strong>{componente.nome}</strong>
             <StatusBadge status={componente.status} />

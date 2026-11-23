@@ -169,7 +169,7 @@ A API confere o perfil em todas essas rotas; aluno recebe 403.
 `preparar-banco.sh` pode ser rodado de novo a qualquer momento: ele só aplica as migrations novas (registradas na tabela `schema_migracoes`) e não apaga dados. Depois de um `git pull`:
 
 ```bash
-docker compose up -d --build
+docker compose up -d --build -V   # -V recria o node_modules dos containers (pega dependências novas)
 docker compose exec db sh /scripts/preparar-banco.sh
 ```
 

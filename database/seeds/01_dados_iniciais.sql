@@ -1,7 +1,7 @@
--- Usuários de teste. Senha de ambos: senha123 (só para desenvolvimento local; nunca use em produção)
+-- Usuários de teste (senha em texto plano para ambos: senha123)
 INSERT INTO usuario (nome, matricula, email, senha_hash, perfil) VALUES
-('Aluno Teste', '12345', 'aluno@furg.br', '$2b$10$.SEJHu2f.0qDMauL9JowO.rXUdSI8HfIkHTPfn83SFnxT38MUJbHa', 'aluno'),
-('Admin Lab', '99999', 'admin@furg.br', '$2b$10$.SEJHu2f.0qDMauL9JowO.rXUdSI8HfIkHTPfn83SFnxT38MUJbHa', 'admin');
+('Aluno Teste', '12345', 'aluno@furg.br', '$2a$10$RS.X5xyxkl5W.1M92lidNOoagkD5OMTSLa6ewPx9yxT.uDfM7KfhK', 'aluno'),
+('Admin Lab', '99999', 'admin@furg.br', '$2a$10$RS.X5xyxkl5W.1M92lidNOoagkD5OMTSLa6ewPx9yxT.uDfM7KfhK', 'admin');
 
 -- Localizações
 INSERT INTO localizacao (nome, laboratorio) VALUES
@@ -14,5 +14,5 @@ INSERT INTO componente (nome, categoria, codigo_qr, localizacao_id, status) VALU
 ('Arduino Uno R3', 'microcontrolador', 'qr-arduino-01', 1, 'disponivel'),
 ('Osciloscópio Digital', 'equipamento', 'qr-osc-01', 2, 'manutencao');
 
--- Empréstimo aberto do sensor (por isso o status dele é 'emprestado')
+-- Empréstimo em aberto inicial (coerente com status = 'emprestado' do componente 1)
 INSERT INTO emprestimo (usuario_id, componente_id) VALUES (1, 1);

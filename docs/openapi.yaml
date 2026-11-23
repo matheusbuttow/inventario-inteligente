@@ -29,6 +29,8 @@ tags:
     description: Armários, gavetas e laboratórios
   - name: Empréstimos
     description: Retirada, devolução, histórico e atrasos
+  - name: Pessoas
+    description: Cadastro de contas pelo admin
 
 paths:
   /health:
@@ -240,6 +242,72 @@ paths:
         "404":
           $ref: "#/components/responses/NaoEncontrado"
 
+  /componentes/{id}/foto:
+    parameters:
+      - $ref: "#/components/parameters/ComponenteId"
+    get:
+      tags: [Componentes]
+      summary: Foto do componente (pública, para usar direto em <img>)
+      operationId: getComponenteFoto
+      security: []
+      responses:
+        "200":
+          description: Bytes da imagem
+          content:
+            image/jpeg: {}
+            image/png: {}
+            image/webp: {}
+        "404":
+          $ref: "#/components/responses/NaoEncontrado"
+    put:
+      tags: [Componentes]
+      summary: Envia ou troca a foto (admin)
+      operationId: putComponenteFoto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [imagem]
+              properties:
+                imagem:
+                  type: string
+                  description: Data URL JPEG, PNG ou WebP, até 2 MB de imagem.
+                  example: data:image/jpeg;base64,/9j/4AAQ...
+      responses:
+        "200":
+          description: Componente atualizado, com foto_url
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComponenteDetalhe"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+        "404":
+          $ref: "#/components/responses/NaoEncontrado"
+    delete:
+      tags: [Componentes]
+      summary: Remove a foto (admin)
+      operationId: deleteComponenteFoto
+      responses:
+        "200":
+          description: Componente sem foto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComponenteDetalhe"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+        "404":
+          $ref: "#/components/responses/NaoEncontrado"
+
   /componentes/qr/{codigo}:
     get:
       tags: [Componentes]
@@ -304,6 +372,146 @@ paths:
           $ref: "#/components/responses/NaoAutenticado"
         "403":
           $ref: "#/components/responses/SemPermissao"
+
+  /localizacoes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    put:
+      tags: [Localizações]
+      summary: Edita localização (admin)
+      operationId: putLocalizacao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalizacaoCreate"
+      responses:
+        "200":
+          description: Localização atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Localizacao"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+        "404":
+          $ref: "#/components/responses/NaoEncontrado"
+    delete:
+      tags: [Localizações]
+      summary: Remove localização (admin). Os componentes dela ficam sem localização.
+      operationId: deleteLocalizacao
+      responses:
+        "204":
+          description: Removida
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+        "404":
+          $ref: "#/components/responses/NaoEncontrado"
+
+  /usuarios:
+    get:
+      tags: [Pessoas]
+      summary: Lista todas as contas (admin)
+      operationId: getUsuarios
+      responses:
+        "200":
+          description: Contas cadastradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UsuarioAdmin"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+    post:
+      tags: [Pessoas]
+      summary: Cadastra aluno ou admin (admin)
+      operationId: postUsuarios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/RegistrarRequest"
+                - type: object
+                  properties:
+                    perfil:
+                      $ref: "#/components/schemas/Perfil"
+      responses:
+        "201":
+          description: Conta criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsuarioAdmin"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+        "409":
+          description: E-mail ou matrícula já cadastrados
+
+  /usuarios/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    patch:
+      tags: [Pessoas]
+      summary: Altera dados, perfil, senha ou desativa uma conta (admin)
+      description: O admin não pode tirar o próprio perfil de admin nem desativar a própria conta.
+      operationId: patchUsuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nome: { type: string, maxLength: 120 }
+                email: { type: string, format: email }
+                matricula: { type: string, maxLength: 20 }
+                perfil: { $ref: "#/components/schemas/Perfil" }
+                ativo: { type: boolean }
+                senha: { type: string, minLength: 6 }
+      responses:
+        "200":
+          description: Conta atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsuarioAdmin"
+        "400":
+          $ref: "#/components/responses/DadosInvalidos"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/SemPermissao"
+        "404":
+          $ref: "#/components/responses/NaoEncontrado"
+        "409":
+          description: E-mail ou matrícula já cadastrados
 
   /emprestimos:
     post:
@@ -545,6 +753,15 @@ components:
           type: string
           format: date-time
 
+    UsuarioAdmin:
+      allOf:
+        - $ref: "#/components/schemas/UsuarioPublico"
+        - type: object
+          properties:
+            ativo:
+              type: boolean
+              description: Conta desativada não consegue fazer login.
+
     Localizacao:
       type: object
       required: [id, nome, laboratorio]
@@ -595,6 +812,11 @@ components:
         criado_em:
           type: string
           format: date-time
+        foto_url:
+          type: string
+          nullable: true
+          description: Caminho relativo da foto (GET público) ou null se não houver.
+          example: /componentes/3/foto?v=1763900000000
         localizacao:
           $ref: "#/components/schemas/Localizacao"
 

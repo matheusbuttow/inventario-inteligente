@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import Foto from "../components/Foto";
 import { Carregando, Erro, Vazio } from "../components/Estado";
 import useCarregar from "../hooks/useCarregar";
 import { atrasados, devolver, meusEmprestimos, mensagemDeErro } from "../services/inventario";
@@ -43,11 +44,14 @@ export default function MeusEmprestimos() {
           const atrasado = idsAtrasados.has(e.id);
           return (
             <li key={e.id} className={atrasado ? "cartao cartao-atrasado" : "cartao"}>
-              <div className="cartao-topo">
-                <Link to={`/componentes/${e.componente_id}`}>
-                  <strong>{e.componente?.nome}</strong>
-                </Link>
-                {atrasado && <span className="badge badge-atrasado">Atrasado</span>}
+              <div className="cartao-com-foto">
+                <Foto componente={e.componente} />
+                <div className="cartao-topo">
+                  <Link to={`/componentes/${e.componente_id}`}>
+                    <strong>{e.componente?.nome}</strong>
+                  </Link>
+                  {atrasado && <span className="badge badge-atrasado">Atrasado</span>}
+                </div>
               </div>
               <span className="detalhe">Pegou em {dataHora(e.retirado_em)} ({diasDesde(e.retirado_em)})</span>
               <span className="detalhe">Devolver em: {local(e.componente)}</span>

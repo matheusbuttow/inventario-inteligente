@@ -16,7 +16,7 @@ const registrar = async (req, res, next) => {
     );
     const email = emailValido(body.email);
     const senha = typeof body.senha === 'string' ? body.senha : '';
-    // Cadastro público sempre cria aluno; admin só é criado direto no banco (seed ou SQL).
+    // Cadastro público sempre cria aluno; contas de admin são criadas por um admin em /usuarios.
     const perfil = 'aluno';
 
     if (!nome) {
@@ -74,14 +74,14 @@ const login = async (req, res, next) => {
     let result;
     if (emailBruto) {
       result = await db.query(
-        `SELECT id, nome, matricula, email, senha_hash, perfil, criado_em
+        `SELECT id, nome, matricula, email, senha_hash, perfil, ativo, criado_em
          FROM usuario
          WHERE LOWER(email) = LOWER($1)`,
         [emailBruto]
       );
     } else {
       result = await db.query(
-        `SELECT id, nome, matricula, email, senha_hash, perfil, criado_em
+        `SELECT id, nome, matricula, email, senha_hash, perfil, ativo, criado_em
          FROM usuario
          WHERE matricula = $1`,
         [matriculaBruta]
@@ -100,6 +100,10 @@ const login = async (req, res, next) => {
 
     if (!user || !senhaValida) {
       return next(naoAutenticado('E-mail ou senha inválidos.'));
+    }
+
+    if (user.ativo === false) {
+      return next(naoAutenticado('Esta conta foi desativada. Fale com o administrador.'));
     }
 
     if (!process.env.JWT_SECRET) {

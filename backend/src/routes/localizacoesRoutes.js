@@ -8,5 +8,7 @@ router.use(autenticar);
 
 router.get('/', localizacoesController.listar);
 router.post('/', exigirAdmin, localizacoesController.criar);
+router.put('/:id', exigirAdmin, localizacoesController.atualizar);
+router.delete('/:id', exigirAdmin, localizacoesController.remover);
 
 module.exports = router;

@@ -678,4 +678,191 @@ describe('API Inventário Inteligente', () => {
       assert.equal(res.body.erro, 'COMPONENTE_JA_EMPRESTADO');
     });
   });
+  describe('Fotos dos componentes', () => {
+    const PNG_1PX =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+    it('PUT /componentes/:id/foto exige admin', async () => {
+      const res = await req('/componentes/1/foto', {
+        method: 'PUT',
+        token: tokenAluno,
+        body: { imagem: `data:image/png;base64,${PNG_1PX}` },
+      });
+      assert.equal(res.status, 403);
+    });
+
+    it('PUT /componentes/:id/foto recusa formato que não é imagem', async () => {
+      const res = await req('/componentes/1/foto', {
+        method: 'PUT',
+        token: tokenAdmin,
+        body: { imagem: 'data:text/plain;base64,b2k=' },
+      });
+      assert.equal(res.status, 400);
+      assert.equal(res.body.erro, 'DADOS_INVALIDOS');
+    });
+
+    it('PUT /componentes/:id/foto grava os bytes e devolve foto_url', async () => {
+      let gravado = null;
+      mockQueryHandler = async (sql, params) => {
+        if (/UPDATE componente SET foto/i.test(sql)) {
+          gravado = params;
+          return { rows: [{ id: 1 }] };
+        }
+        if (/FROM componente c/i.test(sql)) {
+          return {
+            rows: [{
+              id: 1, nome: 'Sensor', categoria: 's', codigo_qr: 'qr', localizacao_id: null,
+              status: 'disponivel', criado_em: new Date(), tem_foto: true,
+              foto_atualizada_em: new Date('2026-01-01T00:00:00Z'),
+            }],
+          };
+        }
+        return { rows: [] };
+      };
+      const res = await req('/componentes/1/foto', {
+        method: 'PUT',
+        token: tokenAdmin,
+        body: { imagem: `data:image/png;base64,${PNG_1PX}` },
+      });
+      assert.equal(res.status, 200);
+      assert.ok(Buffer.isBuffer(gravado[0]));
+      assert.equal(gravado[1], 'image/png');
+      assert.equal(res.body.foto_url, `/componentes/1/foto?v=${Date.parse('2026-01-01T00:00:00Z')}`);
+    });
+
+    it('GET /componentes/:id/foto é público e devolve a imagem', async () => {
+      mockQueryHandler = async (sql) => {
+        if (/SELECT foto, foto_tipo/i.test(sql)) {
+          return { rows: [{ foto: Buffer.from(PNG_1PX, 'base64'), foto_tipo: 'image/png' }] };
+        }
+        return { rows: [] };
+      };
+      const res = await fetch(`${baseUrl}/componentes/1/foto`);
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get('content-type'), 'image/png');
+      const bytes = Buffer.from(await res.arrayBuffer());
+      assert.equal(bytes.length, Buffer.from(PNG_1PX, 'base64').length);
+    });
+
+    it('GET /componentes/:id/foto sem foto devolve 404', async () => {
+      const res = await req('/componentes/9/foto');
+      assert.equal(res.status, 404);
+    });
+
+    it('Listagem traz foto_url nula quando não há foto', async () => {
+      mockQueryHandler = async () => ({
+        rows: [{ id: 2, nome: 'Arduino', categoria: 'm', codigo_qr: 'qr2', status: 'disponivel', tem_foto: false }],
+      });
+      const res = await req('/componentes', { token: tokenAluno });
+      assert.equal(res.status, 200);
+      assert.equal(res.body[0].foto_url, null);
+    });
+  });
+
+  describe('Cadastro de pessoas pelo admin', () => {
+    it('/usuarios é só para admin', async () => {
+      const lista = await req('/usuarios', { token: tokenAluno });
+      assert.equal(lista.status, 403);
+      const criar = await req('/usuarios', {
+        method: 'POST',
+        token: tokenAluno,
+        body: { nome: 'X', matricula: '1', email: 'x@furg.br', senha: 'senha123', perfil: 'admin' },
+      });
+      assert.equal(criar.status, 403);
+      const semToken = await req('/usuarios');
+      assert.equal(semToken.status, 401);
+    });
+
+    it('POST /usuarios cria aluno ou admin com senha em hash', async () => {
+      let params = null;
+      mockQueryHandler = async (sql, p) => {
+        if (/INSERT INTO usuario/i.test(sql)) {
+          params = p;
+          return { rows: [{ id: 5, nome: p[0], matricula: p[1], email: p[2], perfil: p[4], ativo: true }] };
+        }
+        return { rows: [] };
+      };
+      const res = await req('/usuarios', {
+        method: 'POST',
+        token: tokenAdmin,
+        body: { nome: 'Prof. Ana', matricula: '777', email: 'ana@furg.br', senha: 'segura1', perfil: 'admin' },
+      });
+      assert.equal(res.status, 201);
+      assert.equal(res.body.perfil, 'admin');
+      assert.equal(res.body.senha_hash, undefined);
+      assert.ok(await bcrypt.compare('segura1', params[3]));
+    });
+
+    it('POST /usuarios recusa perfil inválido e e-mail duplicado', async () => {
+      const perfil = await req('/usuarios', {
+        method: 'POST',
+        token: tokenAdmin,
+        body: { nome: 'X', matricula: '1', email: 'x@furg.br', senha: 'senha123', perfil: 'root' },
+      });
+      assert.equal(perfil.status, 400);
+
+      mockQueryHandler = async () => {
+        const erro = new Error('dup');
+        erro.code = '23505';
+        erro.constraint = 'usuario_email_key';
+        throw erro;
+      };
+      const dup = await req('/usuarios', {
+        method: 'POST',
+        token: tokenAdmin,
+        body: { nome: 'X', matricula: '1', email: 'x@furg.br', senha: 'senha123' },
+      });
+      assert.equal(dup.status, 409);
+    });
+
+    it('PATCH /usuarios/:id não deixa o admin se rebaixar ou se desativar', async () => {
+      const rebaixar = await req('/usuarios/2', { method: 'PATCH', token: tokenAdmin, body: { perfil: 'aluno' } });
+      assert.equal(rebaixar.status, 400);
+      const desativar = await req('/usuarios/2', { method: 'PATCH', token: tokenAdmin, body: { ativo: false } });
+      assert.equal(desativar.status, 400);
+    });
+
+    it('PATCH /usuarios/:id desativa outra conta', async () => {
+      mockQueryHandler = async (sql, p) => {
+        if (/UPDATE usuario/i.test(sql)) {
+          assert.deepEqual(p, [false, 1]);
+          return { rows: [{ id: 1, nome: 'Aluno', perfil: 'aluno', ativo: false }] };
+        }
+        return { rows: [] };
+      };
+      const res = await req('/usuarios/1', { method: 'PATCH', token: tokenAdmin, body: { ativo: false } });
+      assert.equal(res.status, 200);
+      assert.equal(res.body.ativo, false);
+    });
+
+    it('Login recusa conta desativada', async () => {
+      const hash = await bcrypt.hash('senha123', 4);
+      mockQueryHandler = async () => ({
+        rows: [{ id: 1, nome: 'A', email: 'aluno@furg.br', senha_hash: hash, perfil: 'aluno', ativo: false }],
+      });
+      const res = await req('/auth/login', { method: 'POST', body: { email: 'aluno@furg.br', senha: 'senha123' } });
+      assert.equal(res.status, 401);
+      assert.match(res.body.mensagem, /desativada/);
+    });
+  });
+
+  describe('Localizações (admin)', () => {
+    it('PUT e DELETE de localização exigem admin', async () => {
+      const put = await req('/localizacoes/1', { method: 'PUT', token: tokenAluno, body: { nome: 'a', laboratorio: 'b' } });
+      assert.equal(put.status, 403);
+      const del = await req('/localizacoes/1', { method: 'DELETE', token: tokenAluno });
+      assert.equal(del.status, 403);
+    });
+
+    it('PUT /localizacoes/:id atualiza', async () => {
+      mockQueryHandler = async (sql, p) => ({ rows: [{ id: p[2], nome: p[0], laboratorio: p[1] }] });
+      const res = await req('/localizacoes/3', {
+        method: 'PUT',
+        token: tokenAdmin,
+        body: { nome: 'Gaveta 4', laboratorio: 'LabSis' },
+      });
+      assert.equal(res.status, 200);
+      assert.equal(res.body.nome, 'Gaveta 4');
+    });
+  });
 });

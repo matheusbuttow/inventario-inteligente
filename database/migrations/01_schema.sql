@@ -2,8 +2,8 @@
 CREATE TABLE usuario (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(120) NOT NULL,
-    matricula VARCHAR(20) UNIQUE,
-    email VARCHAR(120) UNIQUE,
+    matricula VARCHAR(20) UNIQUE NOT NULL,
+    email VARCHAR(120) UNIQUE NOT NULL,
     senha_hash VARCHAR(255) NOT NULL,
     perfil VARCHAR(20) NOT NULL CHECK (perfil IN ('aluno', 'admin')),
     criado_em TIMESTAMP DEFAULT NOW()
@@ -27,15 +27,14 @@ CREATE TABLE componente (
     criado_em TIMESTAMP DEFAULT NOW()
 );
 
--- Índices exigidos para a tabela de componentes 
-CREATE INDEX idx_componente_codigo_qr ON componente(codigo_qr);
+-- Índice exigido para filtro por status (Semana 1)
 CREATE INDEX idx_componente_status ON componente(status);
 
 -- 4. Tabela de Empréstimos
 CREATE TABLE emprestimo (
     id SERIAL PRIMARY KEY,
-    usuario_id INT REFERENCES usuario(id) ON DELETE CASCADE,
-    componente_id INT REFERENCES componente(id) ON DELETE CASCADE,
+    usuario_id INT NOT NULL REFERENCES usuario(id) ON DELETE RESTRICT,
+    componente_id INT NOT NULL REFERENCES componente(id) ON DELETE RESTRICT,
     retirado_em TIMESTAMP DEFAULT NOW(),
     devolvido_em TIMESTAMP NULL -- Fica nulo enquanto o item não for devolvido
 );

@@ -6,7 +6,7 @@ CREATE TABLE usuario (
     email VARCHAR(120) UNIQUE NOT NULL,
     senha_hash VARCHAR(255) NOT NULL,
     perfil VARCHAR(20) NOT NULL CHECK (perfil IN ('aluno', 'admin')),
-    criado_em TIMESTAMP DEFAULT NOW()
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 2. Tabela de Localizações
@@ -24,7 +24,7 @@ CREATE TABLE componente (
     codigo_qr VARCHAR(64) UNIQUE NOT NULL,
     localizacao_id INT REFERENCES localizacao(id) ON DELETE SET NULL,
     status VARCHAR(20) NOT NULL CHECK (status IN ('disponivel', 'emprestado', 'manutencao')),
-    criado_em TIMESTAMP DEFAULT NOW()
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Índice exigido para filtro por status (Semana 1)
@@ -35,6 +35,7 @@ CREATE TABLE emprestimo (
     id SERIAL PRIMARY KEY,
     usuario_id INT NOT NULL REFERENCES usuario(id) ON DELETE RESTRICT,
     componente_id INT NOT NULL REFERENCES componente(id) ON DELETE RESTRICT,
-    retirado_em TIMESTAMP DEFAULT NOW(),
-    devolvido_em TIMESTAMP NULL -- Fica nulo enquanto o item não for devolvido
+    retirado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    devolvido_em TIMESTAMPTZ NULL, -- Fica nulo enquanto o item não for devolvido
+    CHECK (devolvido_em IS NULL OR devolvido_em >= retirado_em)
 );

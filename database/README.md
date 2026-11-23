@@ -11,6 +11,17 @@ Modelagem relacional e scripts SQL em PostgreSQL 16 para o controle de component
 | `seeds/01_dados_iniciais.sql` | Carga inicial com 2 usuários de teste, 2 localizações, 3 componentes (nos status `emprestado`, `disponivel` e `manutencao`) e 1 empréstimo ativo. |
 | `diagrama-er.png` | Diagrama entidade-relacionamento atualizado do banco. |
 
+## Usuários de teste (criados pelo seed)
+
+| Perfil | E-mail | Matrícula | Senha |
+| --- | --- | --- | --- |
+| aluno | `aluno@furg.br` | `12345` | `senha123` |
+| admin | `admin@furg.br` | `99999` | `senha123` |
+
+Só para desenvolvimento local. As datas usam `TIMESTAMPTZ`, então a API mostra o horário certo
+mesmo rodando fora do Docker. Se o seu banco foi criado antes desta mudança, recrie com
+`docker compose down -v`.
+
 ## Contrato com o back-end
 
 * Qualquer alteração estrutural em tabelas, colunas ou restrições deve ser feita via **nova migration** (`03_...sql`) e comunicada previamente no grupo antes do merge (`Thiago → Pietro`).
